@@ -1,71 +1,14 @@
-import traceback
-
-
-class State:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
-
-    def __repr__(self):
-        return 'x: ' + str(self.x) + ' y: ' + str(self.y)
-
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-
-class Grid:
-    def __init__(self, numRows, numCols, walls, terminal_states, reward, transition, discount_rate, epsilon):
-        self.numRows = numRows
-        self.numCols = numCols
-        self.walls = walls
-        self.terminal_states = terminal_states
-        self.reward = reward
-        self.transition = transition
-        self.discount_rate = discount_rate
-        self.epsilon = epsilon
-
-
-    def moves(self, state, action):
-        if action == 'E':
-            if state.x < self.numCols:
-                if State(state.x+1, state.y) not in self.walls:
-                    return State(state.x+1, state.y)
-
-        if action == 'W':
-            if state.x > 1:
-                if State(state.x-1, state.y) not in self.walls:
-                    return State(state.x-1, state.y)
-
-        if action == 'N':
-            if state.y < self.numRows:
-                if State(state.x, state.y+1) not in self.walls:
-                    return State(state.x, state.y+1)
-
-        if action == 'S':
-            if state.y > 1:
-                if State(state.x, state.y-1) not in self.walls:
-                    return State(state.x, state.y-1)
-
-        return state
-
+import Grid
 
 
 # Parsing the input file.
 def parseInput(inputFile):
     # Dictionary for storing the grid world.
     print('-----------------------------PARSING THE INPUT FILE-----------------------------')
-    gridWorld = {}
+    print('\n')
+    gridWorld = Grid.readFile(inputFile)
     wallList = []
     terminalStateDict = {}
-    file = open(inputFile, 'r')
-    for line in file:
-        if ':' in line:
-            key, value = line.strip().split(':')
-            gridWorld[key.strip()] = value.strip()
-    # print(gridWorld)
 
     numRows = gridWorld['size'].split(' ')[1]
     numCols = gridWorld['size'].split(' ')[0]
@@ -77,10 +20,10 @@ def parseInput(inputFile):
     epsilon = gridWorld['epsilon']
 
     for wall in walls:
-        wallList.append(State(int(wall.strip().split(' ')[0]), int(wall.strip().split(' ')[1])))
+        wallList.append(Grid.State(int(wall.strip().split(' ')[0]), int(wall.strip().split(' ')[1])))
     for terminalState in terminalStates:
         x, y, reward = terminalState.strip().split(' ')
-        terminalStateDict[State(int(x), int(y))] = float(reward)
+        terminalStateDict[Grid.State(int(x), int(y))] = float(reward)
 
     print('Number of Rows: ' + str(int(numRows)) + '\n',
           'Number of Columns: ' + str(int(numCols)) + '\n',
@@ -90,19 +33,20 @@ def parseInput(inputFile):
           'Transition: ' + str(transition) + '\n',
           'Float: ' + str(float(discountFactor)) + '\n',
           'Epsilon: ' + str(float(epsilon)))
-    return Grid(int(numRows), int(numCols), wallList, terminalStateDict, float(rewards), transition, float(discountFactor), float(epsilon))
+    return Grid.Grid(int(numRows), int(numCols), wallList, terminalStateDict, float(rewards), transition, float(discountFactor), float(epsilon))
 
 
-
+# Generating MDP
 def generateMDP(gridWorld):
     print('-----------------------------GENERATING MDP-----------------------------')
+    print('\n')
     actionList = ['N', 'E', 'S', 'W']
     states = []
     rewardsDict = {}
     transitionDict = {}
     for i in range(gridWorld.numRows):
         for j in range(gridWorld.numCols):
-            states.append(State(j+1, i+1))
+            states.append(Grid.State(j+1, i+1))
 
     for state in states:
         if state in gridWorld.terminal_states:
@@ -123,14 +67,14 @@ def generateMDP(gridWorld):
     return MDP(states, actionList, transitionDict, rewardsDict, gridWorld.discount_rate, gridWorld.epsilon, gridWorld)
 
 
-
+# Printing the values
 def printGrid(value, numRows, numCols):
     for i in range(numRows, 0, -1):
         for j in range(1, numCols+1):
-            if State(j, i) not in value:
+            if Grid.State(j, i) not in value:
                 print('- ')
             else:
-                print(str(value[State(j, i)]) + ' ')
+                print(str(value[Grid.State(j, i)]) + ' ')
         print('\n')
     pass
 
@@ -147,6 +91,7 @@ class MDP:
         self.epsilon = epsilon
         self.gridWorld = gridWorld
 
+    # Value Iteration
     def valueIteration(self):
         print('---------------------------VALUE ITERATION---------------------------')
         iteration = 0
@@ -186,9 +131,9 @@ class MDP:
                 if abs(utility[state] - utilityCopy[state]) > delta:
                     delta = abs(utility[state] - utilityCopy[state])
             if delta <= self.epsilon * (1-self.discount_rate) / self.discount_rate:
-                print('Final Value')
+                print('---------------------------Final Value---------------------------')
                 printGrid(utility, self.gridWorld.numRows, self.gridWorld.numCols)
-                print('Final Policy')
+                print('---------------------------Final Policy---------------------------')
                 print(policy, self.gridWorld.numRows, self.gridWorld.numCols)
                 break
             iteration = iteration + 1
@@ -196,8 +141,18 @@ class MDP:
 
 
 if __name__ == '__main__':
-    inputFile = 'mdp_input.txt'
-    gridWorld = parseInput(inputFile)
+    inputFile1 = 'mdp_input.txt'
+    inputFile2 = 'mdp_input_book.txt'
+    userInput = int(input('What input would you llke to use? Press 1 for \'mdp_input.txt\' or press 2 for \'mdp_input_book.txt\': '))
+    print('\n')
+    if userInput == 1:
+        print('===============================Performing MDP using \'mdp_input.txt\'===============================')
+        print('\n')
+        gridWorld = parseInput(inputFile1)
+    elif userInput == 2:
+        print('===============================Performing MDP using \'mdp_input_book.txt\'===============================')
+        print('\n')
+        gridWorld = parseInput(inputFile2)
     gridMDP = generateMDP(gridWorld)
     gridMDP.valueIteration()
 
